@@ -11,7 +11,8 @@ async function repl(readline:any){ //game play here
     const initialMachine: Machine = {
         screen: initialScreen,
         fundAmount: initialMachineFund,
-        playCost: 1
+        playCost: 1,
+        credits: 0
     }
     const initialPlayer: Player = {
         walletAmount: 6
@@ -25,8 +26,10 @@ async function repl(readline:any){ //game play here
     // could log history of state with state[], and current state would be first/last element
     
     do {
+        console.log(`PRIZE MONEY: ${state.machine.fundAmount}`)
         console.log(state.machine.screen)
-        console.log(`Your wallet contains: ${state.player.walletAmount}}`)
+        console.log(`Free credits available: ${state.machine.credits}`)
+        console.log(`Your wallet contains: ${state.player.walletAmount}`)
 
 
         await readline.questionAsync("Press enter to pull the lever ->")

@@ -82,7 +82,55 @@ describe("evaluateMachinePlay", () => {
 
   });
 
-  function generateState(walletAmount: number, fundAmount: number, screen: Screen, playCost=1){
+  it("does not deduct play cost if credits are available", () => {
+    const testState = generateState(3,30,[],1, 5)
+
+    const expectedState = generateState(3,30, noPrizeScreen, 1, 4)
+    expect(evaluateMachinePlay(testState, noPrizeScreen)).toEqual(expectedState);
+
+  });
+
+  it("paying with credit: pays out all credits if cannot pay out prize money at all", () => {
+    //scenario only works if paying with credits to begin with (otherwise will always be partial pay/credits)
+    const testState = generateState(3,0,[],1, 1)
+
+    const expectedState = generateState(3,0, fiveTimesPlayCostScreen1, 1, 5)
+
+    expect(evaluateMachinePlay(testState, fiveTimesPlayCostScreen1)).toEqual(expectedState);
+
+  });
+
+  it("paying with credit: pays out partial credits if cannot pay out full prize money", () => {
+
+    const testState = generateState(2,3,[],1, 1)
+
+    // pay with 1 credit
+    // five times jackpot winnings are 5
+    // should receive 3 in machine plus 2 credits
+
+    const expectedState = generateState(5,0, fiveTimesPlayCostScreen1, 1, 2)
+
+    expect(evaluateMachinePlay(testState, fiveTimesPlayCostScreen1)).toEqual(expectedState);
+
+
+  });
+
+  it("paying with cash: pays out partial credits if cannot pay out full prize money", () => {
+
+    const testState = generateState(5,5,[],5, 0)
+
+    // pay with cash
+    // five times jackpot winnings are 25
+    // should receive 10 in machine plus 3 credits
+
+    const expectedState = generateState(10,0, fiveTimesPlayCostScreen1, 5, 3)
+
+    expect(evaluateMachinePlay(testState, fiveTimesPlayCostScreen1)).toEqual(expectedState);
+
+
+  });
+
+  function generateState(walletAmount: number, fundAmount: number, screen: Screen, playCost=1, credits=0){
     return {
       player: {
         walletAmount
@@ -90,7 +138,8 @@ describe("evaluateMachinePlay", () => {
       machine: {
         playCost,
         screen,
-        fundAmount
+        fundAmount,
+        credits
       }
     }
   }

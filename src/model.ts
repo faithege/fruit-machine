@@ -6,7 +6,7 @@ export interface Machine {
     screen: Screen
     fundAmount: number
     playCost: number
-    // add outstanding credits
+    credits: number
 }
 
 export interface Player {

@@ -38,9 +38,9 @@ function determinePrize(screen: Screen): Prize {
 function generateWinnings(prize: Prize, fundAmount: number, playCost: number): number {
     switch(prize) {
         case "jackpot":
-            return fundAmount + playCost
+            return fundAmount
         case "halfJackpot":
-            return Math.ceil((fundAmount+playCost)/2) //only need to deal with half pounds in this case
+            return Math.ceil(fundAmount/2) //only need to deal with half pounds in this case
         case "fiveTimesPlayCost":
             return 5 * playCost
         case "nothing": //best to have an explicit case rather than a default case
@@ -49,31 +49,53 @@ function generateWinnings(prize: Prize, fundAmount: number, playCost: number): n
 }
 
         
-export function evaluateMachinePlay(state: State, slots: Screen): State {
+export function evaluateMachinePlay(initialState: State, slots: Screen): State {
     //we dont want to change the incoming state as that makes the function impure
     
-    if(state.player.walletAmount < state.machine.playCost){
+    // 3 phases with intermediate state
+
+    // phase 1 - pay for go
+    const payingWithCredit: boolean = initialState.machine.credits >= 1
+    if(initialState.player.walletAmount < initialState.machine.playCost && !payingWithCredit){
         //if player doesn't have money the screen will not change
-        return state // okay as not changing the original state
+        return initialState // okay as not changing the original state
     }
+    
+    const postPayState: State = {
+        machine:{
+            ...initialState.machine, //rather than specifying playCost which doesn't change
+            fundAmount: payingWithCredit ? initialState.machine.fundAmount : initialState.machine.fundAmount + initialState.machine.playCost,
+            screen: slots,
+            credits: payingWithCredit ? initialState.machine.credits - 1 : 0
+        },
+        player:{
+            walletAmount: payingWithCredit ? initialState.player.walletAmount : initialState.player.walletAmount - initialState.machine.playCost,
+        }
+    }
+      
+    // phase 2 - determine prize and generate winnings
+    // no updated state required
+    const prize = determinePrize(slots) //here we know if 5x cost case activated
+    const winningsAmount = generateWinnings(prize, postPayState.machine.fundAmount, postPayState.machine.playCost)
 
-    const prize = determinePrize(slots)
-    const transferAmount = generateWinnings(prize, state.machine.fundAmount, state.machine.playCost) - state.machine.playCost
+    // phase 3 - pay or credit user
+    // do we have enough money for  the winnings?
+    // could use math.min to get smaller of the two but below is more explicit
+    const winningsTransferAmount = winningsAmount < postPayState.machine.fundAmount ? winningsAmount : postPayState.machine.fundAmount
+    const newCredits = Math.ceil((winningsAmount - winningsTransferAmount)/postPayState.machine.playCost) // 0 if we can pay out!
 
-    const newWalletAmount = state.player.walletAmount + transferAmount
-    const newFundAmount = state.machine.fundAmount - transferAmount
+    const newWalletAmount = postPayState.player.walletAmount + winningsTransferAmount
+    const newFundAmount = postPayState.machine.fundAmount - winningsTransferAmount
+    const newCreditsAmount = postPayState.machine.credits + newCredits
 
     return {
         machine:{
-            ...state.machine, //rather than specifying playCost which doesn't change
+            ...postPayState.machine, //rather than specifying playCost which doesn't change
             fundAmount: newFundAmount,
-            screen: slots
+            credits: newCreditsAmount
         },
         player:{
-            //...state.player, //future proofing code in case add more fields
             walletAmount: newWalletAmount
         }
     }
 }
-// better solution - not mutating state -> purer function
-// now not using lets - less error prone
